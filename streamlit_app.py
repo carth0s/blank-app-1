@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import joblib
 import math
 import time
 import random
@@ -433,69 +434,50 @@ elif fase_selecionada == "Fase 3: IoT & Sensores":
 
 # --- FASE 4: MACHINE LEARNING ---
 elif fase_selecionada == "Fase 4: ML & Decisão":
-    st.header("🤖 Fase 4: Inteligência Artificial (Scikit-Learn)")
-    st.markdown("Sistema preditivo para acionamento automático de irrigação baseado em Machine Learning.")
+    # 1. Título e Descrição (Adaptado do seu st.title)
+    st.header("💧 Previsão de Irrigação - FarmTech Solutions")
+    st.markdown("Este sistema decide se é necessário irrigar com base na umidade do solo.")
 
-    # --- 1. CARREGAMENTO DO MODELO (Backend) ---
+    # 2. Carregar modelo (Com proteção para não travar o app se faltar o arquivo)
     modelo = None
     try:
-        import joblib
+        import joblib # Importação local para garantir
         modelo = joblib.load("modelo_irrigacao.pkl")
-        status_modelo = "✅ Modelo Carregado (Scikit-Learn)"
     except FileNotFoundError:
-        status_modelo = "⚠️ Modo Simulação (Arquivo .pkl não encontrado)"
+        st.error("⚠️ O arquivo 'modelo_irrigacao.pkl' não foi encontrado na pasta.")
+    except Exception as e:
+        st.error(f"Erro ao carregar modelo: {e}")
 
-    # Exibe status discreto no canto
-    st.caption(f"Status do Sistema: {status_modelo}")
-    st.divider()
+    # 3. Entrada manual
+    umidade = st.slider("Umidade do Solo (%)", min_value=0.0, max_value=100.0, step=0.1)
 
-    # --- 2. INTERFACE DE DECISÃO (Frontend) ---
-    col_input, col_resultado = st.columns(2)
-
-    with col_input:
-        st.subheader("Simulação de Sensor")
-        # Slider para input da umidade
-        umidade_ml = st.slider("Umidade do Solo (%)", 0.0, 100.0, 45.0, key="slider_ml")
-        
-        # Feedback visual imediato do valor
-        st.metric("Leitura do Sensor", f"{umidade_ml:.1f}%")
-
-    with col_output:
-        st.subheader("Decisão da IA")
-        
-        if st.button("Consultar Modelo Preditivo", type="primary"):
-            # Lógica de Predição
-            decisao = 0 # Default: Não irrigar
+    # 4. Previsão
+    if st.button("Verificar Necessidade de Irrigação"):
+        if modelo is not None:
+            # Seu código original de predição
+            resultado = modelo.predict([[umidade]])[0]
             
-            if modelo:
-                try:
-                    # Previsão Real usando o arquivo .pkl
-                    # O modelo espera um array 2D: [[valor]]
-                    decisao = modelo.predict([[umidade_ml]])[0]
-                except:
-                    # Fallback de segurança se formato de dados for diferente
-                    decisao = 1 if umidade_ml < 40 else 0
+            if resultado == 1:
+                st.warning("🚨 Irrigação Necessária!")
             else:
-                # Fallback de Simulação (Regra do seu README: < 40% irriga)
-                decisao = 1 if umidade_ml < 40 else 0
-
-            # Exibição do Resultado
-            if decisao == 1:
-                st.error("🚨 AÇÃO: IRRIGAR")
-                st.markdown("O modelo identificou **necessidade hídrica** crítica.")
+                st.success("✅ Solo não precisa ser irrigado.")
+        else:
+            # Fallback caso o modelo não tenha carregado
+            st.info("O modelo não está carregado, mas baseado na regra (Umidade < 40%):")
+            if umidade < 40:
+                st.warning("🚨 Irrigação Necessária! (Simulação)")
             else:
-                st.success("✅ AÇÃO: AGUARDAR")
-                st.markdown("O modelo identificou que o solo está **saudável**.")
+                st.success("✅ Solo não precisa ser irrigado. (Simulação)")
 
-    # --- 3. DADOS DE TREINAMENTO (Contexto) ---
+    # 5. Exibir CSV original para contexto
     st.divider()
-    with st.expander("📂 Ver Base de Dados de Treinamento (Dataset)"):
-        try:
-            df = pd.read_csv("dataset_umidade.csv")
-            st.dataframe(df, use_container_width=True)
-            st.caption("Amostra dos dados utilizados para treinar o arquivo 'modelo_irrigacao.pkl'.")
-        except FileNotFoundError:
-            st.warning("Arquivo 'dataset_umidade.csv' não encontrado para visualização.")
+    st.subheader("📊 Base de Dados Simulada")
+    
+    try:
+        df = pd.read_csv("dataset_umidade.csv")
+        st.dataframe(df.head(20), use_container_width=True)
+    except FileNotFoundError:
+        st.warning("O arquivo 'dataset_umidade.csv' não foi encontrado para visualização.")
             
 # --- FASE 5: CLOUD COMPUTING ---
 elif fase_selecionada == "Fase 5: Cloud AWS":
