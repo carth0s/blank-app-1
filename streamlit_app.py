@@ -24,7 +24,7 @@ st.sidebar.title("🚜 Menu de Navegação")
 st.sidebar.info("Fase 7: Consolidação do Sistema")
 fase_selecionada = st.sidebar.radio("Escolha a Fase para Gerenciar:", 
     ["Home", 
-     "Fase 1: Dados & Meteo", 
+     "Fase 1: Calculo Area", 
      "Fase 2: Banco de Dados", 
      "Fase 3: IoT & Sensores", 
      "Fase 4: ML & Decisão", 
