@@ -602,27 +602,7 @@ elif fase_selecionada == "Fase 6: Visão Computacional":
                     st.markdown("---")
                     st.subheader("⚠️ Ação Crítica Necessária")
                     st.write("A doença detectada requer notificação imediata ao agrônomo responsável.")
-                    
-                    # --- INTEGRAÇÃO COM A FASE 5 (AWS) ---
-                    # Este botão só aparece se for doença
-                    if st.button("☁️ Enviar Alerta de Doença via AWS SNS", type="secondary"):
-                        try:
-                            # Tenta importar a função que já sabemos que funciona
-                            from sns_alerta import enviar_alerta_aws
-                            
-                            msg_doenca = f"ALERTA FITOSSANITÁRIO: O sistema de visão computacional detectou {resultado_final['label']} na lavoura com {resultado_final['conf']*100:.1f}% de confiança."
-                            
-                            with st.spinner("Conectando à AWS..."):
-                                sucesso, retorno = enviar_alerta_aws(msg_doenca)
-                            
-                            if sucesso:
-                                st.toast("Alerta enviado com sucesso!", icon="✅")
-                                st.success(f"Notificação enviada para o tópico SNS. ID: {retorno}")
-                            else:
-                                st.error(f"Erro no envio AWS: {retorno}")
-                                
-                        except ImportError:
-                            st.error("Erro: Módulo 'sns_alerta.py' não encontrado para integração.")
+                
 
 # --- RODAPÉ ---
 st.sidebar.markdown("---")
