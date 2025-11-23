@@ -41,12 +41,6 @@ if fase_selecionada == "Home":
     st.header("Bem-vindo ao Painel de Controle")
     st.write("Este dashboard centraliza todas as etapas do projeto, desde a coleta de dados até a inteligência artificial.")
     
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Status do Sistema", "Online", delta="Normal")
-    col2.metric("Cloud AWS", "Conectado", delta="US-EAST-1")
-    col3.metric("Dispositivos IoT", "4 Ativos", delta="+1")
-    
-    st.image("https://streamlit.io/images/brand/streamlit-mark-color.png", width=100)
     st.info("Selecione uma fase no menu lateral para interagir com os módulos específicos.")
 
 # ... (início do código anterior permanece igual)
