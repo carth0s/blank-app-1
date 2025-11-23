@@ -481,24 +481,65 @@ elif fase_selecionada == "Fase 4: ML & Decisão":
             
 # --- FASE 5: CLOUD COMPUTING ---
 elif fase_selecionada == "Fase 5: Cloud AWS":
-    st.header("☁️ Fase 5: Infraestrutura Cloud & Segurança")
-    
-    st.markdown("### Monitoramento de Segurança (ISO 27001)")
-    
-    col1, col2, col3 = st.columns(3)
-    col1.success("Encryption at Rest: **ATIVO**")
-    col2.success("Firewall WAF: **ATIVO**")
-    col3.success("Backup Automático: **02:00 AM**")
-    
-    st.markdown("### Logs de Acesso (Audit Trail)")
-    logs = pd.DataFrame({
-        'User': ['admin', 'sistema_iot', 'gestor_agro'],
-        'Action': ['LOGIN', 'POST_DATA', 'VIEW_DASHBOARD'],
-        'IP': ['192.168.1.10', '10.0.0.55', '189.32.11.4'],
-        'Status': ['Allow', 'Allow', 'Allow']
-    })
-    st.table(logs)
+    st.header("☁️ Fase 5: Integração Cloud (AWS SNS)")
+    st.markdown("Serviço de mensageria para disparar alertas de segurança via nuvem.")
 
+    col_monitor, col_log = st.columns([1, 1])
+
+    with col_monitor:
+        st.subheader("Monitoramento de Umidade")
+        st.info("O sistema verifica automaticamente se a umidade está abaixo de 40%.")
+
+        # Slider para simular o sensor
+        umidade_aws = st.slider("Simular Sensor de Umidade (%)", 0, 100, 35)
+
+        # Botão para testar o envio
+        if st.button("Verificar e Disparar Alerta", type="primary"):
+            
+            # Lógica de Monitoramento
+            if umidade_aws < 40:
+                st.warning(f"⚠️ Umidade Crítica detectada: {umidade_aws}%")
+                st.toast("Conectando à AWS...", icon="☁️")
+                
+                # --- AQUI CHAMAMOS O SEU ARQUIVO EXTERNO ---
+                try:
+                    from sns_alerta import enviar_alerta_aws
+                    
+                    mensagem_envio = f"ALERTA FARMTECH: Umidade do solo crítica ({umidade_aws}%). Acionar irrigação imediatamente."
+                    sucesso, retorno = enviar_alerta_aws(mensagem_envio)
+
+                    if sucesso:
+                        st.success(f"✅ Alerta enviado para AWS SNS! ID: {retorno}")
+                        st.json({"Status": "Sent", "MessageId": retorno, "Topic": "FarmTech-Alerts"})
+                    else:
+                        st.error(f"❌ Falha na conexão AWS: {retorno}")
+                        st.caption("Dica: Verifique se o arquivo 'aws_credentials.json' está na pasta com as chaves corretas.")
+                
+                except ImportError:
+                    st.error("Erro: O arquivo 'sns_alerta.py' não foi encontrado na pasta do projeto.")
+            
+            else:
+                st.success(f"✅ Níveis normais ({umidade_aws}%). Nenhum alerta necessário.")
+
+    with col_log:
+        st.subheader("Arquitetura da Solução")
+        st.markdown("""
+        **Como funciona essa integração:**
+        1. O Script Python detecta a condição crítica (`< 40%`).
+        2. O sistema lê as credenciais seguras do arquivo `json`.
+        3. Utiliza a biblioteca **Boto3** para conectar ao serviço SNS.
+        4. O SNS dispara o e-mail/SMS para o agrônomo responsável.
+        """)
+        
+        # Mostra o código JSON de exemplo para fins didáticos (ocultando chaves reais se quiser)
+        with st.expander("Ver Estrutura do JSON de Credenciais"):
+            st.code("""
+{
+    "AWS_ACCESS_KEY": "AKIA...",
+    "AWS_SECRET_KEY": "wJalr...",
+    "SNS_ARN": "arn:aws:sns:us-east-1:..."
+}
+            """, language="json")
 # --- FASE 6: VISÃO COMPUTACIONAL ---
 elif fase_selecionada == "Fase 6: Visão Computacional":
     st.header("👁️ Fase 6: Detecção de Pragas (YOLO)")
