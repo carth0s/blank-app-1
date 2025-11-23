@@ -183,32 +183,161 @@ elif fase_selecionada == "Fase 1: Dados & Meteo":
             except ValueError:
                 st.error("Erro na entrada de dados! Certifique-se de usar apenas números separados por espaço.")
 
-# --- FASE 2: BANCO DE DADOS ---
+# --- FASE 2: BANCO DE DADOS (SQLite) ---
 elif fase_selecionada == "Fase 2: Banco de Dados":
-    st.header("🗄️ Fase 2: Banco de Dados Estruturado")
-    st.markdown("Visualização das tabelas do MER/DER consolidadas.")
-    
-    tab1, tab2 = st.tabs(["Tabela Sensores", "Tabela Produção"])
-    
-    with tab1:
-        # Simulação de dados vindos do SQL
-        st.write("**Tabela: TB_IOT_LEITURAS**")
-        df_db = pd.DataFrame({
-            'ID_LEITURA': range(1001, 1006),
-            'TIMESTAMP': pd.date_range(start='now', periods=5, freq='min'),
-            'SENSOR_TYPE': ['DHT22', 'DHT22', 'LDR', 'PH_METER', 'DHT22'],
-            'VALOR': [24.5, 24.6, 800, 7.2, 24.7]
-        })
-        st.dataframe(df_db, use_container_width=True)
-        st.caption("Dados carregados do PostgreSQL (Simulado).")
+    st.header("🗄️ Fase 2: Banco de Dados Estruturado (SQLite)")
+    st.markdown("Gerenciamento de Sensores e Leituras com persistência de dados em arquivo `.db`.")
 
-    with tab2:
-        st.write("**Tabela: TB_PLANTIO**")
-        st.dataframe(pd.DataFrame({
-            'CULTURA': ['Soja', 'Milho', 'Café'],
-            'AREA_HA': [150, 200, 80],
-            'STATUS': ['Crescimento', 'Colheita', 'Florada']
-        }))
+    # --- CONFIGURAÇÃO DO BANCO (Backend) ---
+    def get_db_connection():
+        # check_same_thread=False é necessário no Streamlit para evitar erros de thread
+        conn = sqlite3.connect("sensores.db", check_same_thread=False)
+        return conn
+
+    def init_db():
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # Criação da tabela T_SENSOR
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS T_SENSOR (
+            ID_SENSOR INTEGER PRIMARY KEY AUTOINCREMENT,
+            TIPO TEXT NOT NULL,
+            STATUS TEXT,
+            DATA_INSTALACAO TIMESTAMP,
+            ID_PLANTACAO INTEGER
+        )
+        ''')
+        # Criação da tabela T_LEITURA_SENSOR
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS T_LEITURA_SENSOR (
+            ID_LEITURA INTEGER PRIMARY KEY AUTOINCREMENT,
+            DATA_HORA TIMESTAMP,
+            VALOR DOUBLE,
+            TIPO_MEDICAO TEXT,
+            ID_SENSOR INTEGER,
+            FOREIGN KEY(ID_SENSOR) REFERENCES T_SENSOR(ID_SENSOR)
+        )
+        ''')
+        conn.commit()
+        conn.close()
+
+    # Garante que as tabelas existem ao carregar a página
+    init_db()
+
+    # --- INTERFACE (Frontend) ---
+    tab_sensores, tab_leituras = st.tabs(["📡 Gerenciar Sensores", "📈 Gerenciar Leituras"])
+
+    # === ABA 1: SENSORES ===
+    with tab_sensores:
+        st.subheader("Cadastro de Sensores")
+        
+        with st.form("form_sensor"):
+            col1, col2 = st.columns(2)
+            input_tipo = col1.selectbox("Tipo do Sensor", ["Umidade (DHT22)", "Temperatura (DHT22)", "Nutrientes (NPK)", "pH Solo"])
+            input_status = col2.selectbox("Status", ["Ativo", "Inativo", "Manutenção"])
+            input_plantacao = st.number_input("ID da Plantação", min_value=1, value=101)
+            
+            btn_sensor = st.form_submit_button("Inserir Sensor")
+            
+            if btn_sensor:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO T_SENSOR (TIPO, STATUS, DATA_INSTALACAO, ID_PLANTACAO)
+                    VALUES (?, ?, ?, ?)
+                ''', (input_tipo, input_status, datetime.now(), input_plantacao))
+                conn.commit()
+                conn.close()
+                st.success("Sensor inserido com sucesso!")
+                st.rerun()
+
+        st.divider()
+        st.subheader("Sensores Cadastrados")
+        conn = get_db_connection()
+        df_sensores = pd.read_sql("SELECT * FROM T_SENSOR", conn)
+        conn.close()
+        st.dataframe(df_sensores, use_container_width=True)
+
+    # === ABA 2: LEITURAS (CRUD) ===
+    with tab_leituras:
+        st.subheader("Operações de Leitura (CRUD)")
+        
+        # Carregar IDs de sensores existentes para o selectbox
+        conn = get_db_connection()
+        df_ids = pd.read_sql("SELECT ID_SENSOR FROM T_SENSOR", conn)
+        conn.close()
+        
+        lista_ids = df_ids['ID_SENSOR'].tolist() if not df_ids.empty else []
+
+        col_crud1, col_crud2 = st.columns([1, 2])
+
+        # Coluna da Esquerda: Formulários de Ação
+        with col_crud1:
+            acao = st.radio("Escolha a Operação:", ["Inserir Nova Leitura", "Atualizar Valor", "Deletar Leitura"])
+            
+            if acao == "Inserir Nova Leitura":
+                if not lista_ids:
+                    st.warning("Cadastre um sensor primeiro!")
+                else:
+                    sel_sensor = st.selectbox("ID do Sensor", lista_ids)
+                    sel_tipo = st.selectbox("Tipo Medição", ["umidade", "temperatura", "fosforo", "potassio", "pH"])
+                    val_leitura = st.number_input("Valor Medido", format="%.2f")
+                    
+                    if st.button("Salvar Leitura"):
+                        conn = get_db_connection()
+                        cursor = conn.cursor()
+                        cursor.execute('''
+                            INSERT INTO T_LEITURA_SENSOR (DATA_HORA, VALOR, TIPO_MEDICAO, ID_SENSOR)
+                            VALUES (?, ?, ?, ?)
+                        ''', (datetime.now(), val_leitura, sel_tipo, sel_sensor))
+                        conn.commit()
+                        conn.close()
+                        st.success("Leitura salva!")
+                        time.sleep(0.5)
+                        st.rerun()
+
+            elif acao == "Atualizar Valor":
+                id_upd = st.number_input("ID da Leitura para Atualizar", min_value=1, step=1)
+                novo_valor = st.number_input("Novo Valor", format="%.2f")
+                if st.button("Atualizar"):
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("UPDATE T_LEITURA_SENSOR SET VALOR = ? WHERE ID_LEITURA = ?", (novo_valor, id_upd))
+                    conn.commit()
+                    conn.close()
+                    st.success("Atualizado!")
+                    time.sleep(0.5)
+                    st.rerun()
+
+            elif acao == "Deletar Leitura":
+                id_del = st.number_input("ID da Leitura para Deletar", min_value=1, step=1)
+                if st.button("Deletar", type="primary"):
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM T_LEITURA_SENSOR WHERE ID_LEITURA = ?", (id_del,))
+                    conn.commit()
+                    conn.close()
+                    st.warning("Deletado!")
+                    time.sleep(0.5)
+                    st.rerun()
+
+        # Coluna da Direita: Visualização da Tabela
+        with col_crud2:
+            st.write("### 📋 Registros Atuais")
+            conn = get_db_connection()
+            # Join para mostrar qual sensor é (opcional, mas fica bonito)
+            query = """
+                SELECT L.ID_LEITURA, L.DATA_HORA, L.VALOR, L.TIPO_MEDICAO, L.ID_SENSOR, S.TIPO as MODELO_SENSOR
+                FROM T_LEITURA_SENSOR L
+                LEFT JOIN T_SENSOR S ON L.ID_SENSOR = S.ID_SENSOR
+                ORDER BY L.ID_LEITURA DESC
+            """
+            try:
+                df_leituras = pd.read_sql(query, conn)
+                st.dataframe(df_leituras, use_container_width=True, height=400)
+            except:
+                st.info("Nenhuma leitura registrada ainda.")
+            conn.close()
 
 # --- FASE 3: IOT E AUTOMAÇÃO ---
 elif fase_selecionada == "Fase 3: IoT & Sensores":
