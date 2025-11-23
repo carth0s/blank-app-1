@@ -542,26 +542,87 @@ elif fase_selecionada == "Fase 5: Cloud AWS":
             """, language="json")
 # --- FASE 6: VISÃO COMPUTACIONAL ---
 elif fase_selecionada == "Fase 6: Visão Computacional":
-    st.header("👁️ Fase 6: Detecção de Pragas (YOLO)")
-    
-    st.write("Upload de imagem da plantação para análise de saúde.")
-    
-    uploaded_file = st.file_uploader("Escolha uma imagem da lavoura...", type=["jpg", "png", "jpeg"])
-    
-    if uploaded_file is not None:
-        st.image(uploaded_file, caption='Imagem Carregada', width=400)
+    st.header("👁️ Fase 6: Detecção Visual de Doenças (YOLO)")
+    st.markdown("""
+    Módulo de análise de imagens utilizando Redes Neurais Convolucionais (YOLOv8) 
+    para identificar doenças em folhas de batata.
+    """)
+
+    # Layout de duas colunas: Upload na esquerda, Resultado na direita
+    col_upload, col_resultado = st.columns([1, 1.5], gap="large")
+
+    with col_upload:
+        st.subheader("📷 Coleta de Imagem")
+        st.info("Faça o upload de uma imagem clara de uma folha de batata.")
         
-        if st.button("Processar Imagem com YOLO"):
-            with st.spinner('Rede Neural analisando pixels...'):
-                time.sleep(2) # Simula processamento pesado
+        # Widget para subir a foto
+        uploaded_file = st.file_uploader("Escolha uma imagem (.jpg, .png)", type=["jpg", "png", "jpeg"])
+
+        if uploaded_file is not None:
+            # Mostra a imagem carregada com borda arredondada
+            st.image(uploaded_file, caption="Imagem Carregada", use_container_width=True)
+
+    with col_resultado:
+        st.subheader("🧠 Análise da Inteligência Artificial")
+
+        if uploaded_file is None:
+            st.warning("👈 Aguardando upload de imagem para iniciar a análise.")
+        else:
+            # Botão para disparar a "análise"
+            if st.button("🔍 Iniciar Diagnóstico com YOLO", type="primary"):
                 
-                # Aqui entraria a chamada real: results = model(imagem)
+                # 1. Simulação do tempo de processamento da GPU
+                with st.spinner("Processando imagem na rede neural..."):
+                    time.sleep(3) # Espera 3 segundos para parecer real
                 
-                st.subheader("Resultados da Análise:")
-                st.error("⚠️ DETECÇÃO: Ferrugem Asiática (Confiança: 92%)")
-                st.success("✅ CRESCIMENTO: Normal nas demais áreas")
+                # 2. Lógica de Simulação (Sorteio de Resultados Realistas para Batata)
+                import random
+                # Lista de possíveis diagnósticos
+                diagnosticos_possiveis = [
+                    {"label": "SAUDÁVEL (Healthy)", "conf": 0.96, "tipo": "ok", "msg": "Planta sem sinais de patógenos."},
+                    {"label": "PINTA PRETA (Early Blight)", "conf": 0.89, "tipo": "doenca", "msg": "Fungo *Alternaria solani* detectado. Requer fungicida."},
+                    {"label": "REQUEIMA (Late Blight)", "conf": 0.92, "tipo": "doenca", "msg": "Doença grave (*Phytophthora infestans*). Ação imediata necessária."}
+                ]
+                # Sorteia um para mostrar na tela
+                resultado_final = random.choice(diagnosticos_possiveis)
                 
-                st.progress(92, text="Nível de Confiança da IA")
+                # 3. Exibição dos Resultados
+                st.divider()
+                st.write(f"### Diagnóstico: **{resultado_final['label']}**")
+                
+                # Barra de confiança
+                st.progress(resultado_final["conf"], text=f"Confiança do Modelo: {resultado_final['conf']*100:.1f}%")
+                
+                if resultado_final["tipo"] == "ok":
+                    st.success(f"✅ {resultado_final['msg']}")
+                else:
+                    # Se for doença, mostra alerta vermelho e OPÇÃO DE AWS
+                    st.error(f"🚨 {resultado_final['msg']}")
+                    
+                    st.markdown("---")
+                    st.subheader("⚠️ Ação Crítica Necessária")
+                    st.write("A doença detectada requer notificação imediata ao agrônomo responsável.")
+                    
+                    # --- INTEGRAÇÃO COM A FASE 5 (AWS) ---
+                    # Este botão só aparece se for doença
+                    if st.button("☁️ Enviar Alerta de Doença via AWS SNS", type="secondary"):
+                        try:
+                            # Tenta importar a função que já sabemos que funciona
+                            from sns_alerta import enviar_alerta_aws
+                            
+                            msg_doenca = f"ALERTA FITOSSANITÁRIO: O sistema de visão computacional detectou {resultado_final['label']} na lavoura com {resultado_final['conf']*100:.1f}% de confiança."
+                            
+                            with st.spinner("Conectando à AWS..."):
+                                sucesso, retorno = enviar_alerta_aws(msg_doenca)
+                            
+                            if sucesso:
+                                st.toast("Alerta enviado com sucesso!", icon="✅")
+                                st.success(f"Notificação enviada para o tópico SNS. ID: {retorno}")
+                            else:
+                                st.error(f"Erro no envio AWS: {retorno}")
+                                
+                        except ImportError:
+                            st.error("Erro: Módulo 'sns_alerta.py' não encontrado para integração.")
 
 # --- RODAPÉ ---
 st.sidebar.markdown("---")
