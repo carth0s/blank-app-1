@@ -44,7 +44,7 @@ if fase_selecionada == "Home":
     st.info("Selecione uma fase no menu lateral para interagir com os módulos específicos.")
 
 # --- FASE 1: DADOS E METEOROLOGIA ---
-elif fase_selecionada == "Fase 1: Dados & Meteo":
+elif fase_selecionada == "Fase 1: Calculo Area":
     st.header("🌦️ Fase 1: Gestão Inicial & Análise")
     st.markdown("Integração dos scripts de Gestão Agrícola (Python) e Cálculo de Custos (Lógica R).")
 
