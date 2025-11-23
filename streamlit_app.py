@@ -43,8 +43,6 @@ if fase_selecionada == "Home":
     
     st.info("Selecione uma fase no menu lateral para interagir com os módulos específicos.")
 
-# ... (início do código anterior permanece igual)
-
 # --- FASE 1: DADOS E METEOROLOGIA ---
 elif fase_selecionada == "Fase 1: Dados & Meteo":
     st.header("🌦️ Fase 1: Gestão Inicial & Análise")
