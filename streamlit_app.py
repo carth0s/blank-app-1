@@ -341,30 +341,95 @@ elif fase_selecionada == "Fase 2: Banco de Dados":
 
 # --- FASE 3: IOT E AUTOMAÇÃO ---
 elif fase_selecionada == "Fase 3: IoT & Sensores":
-    st.header("📡 Fase 3: IoT e Controle em Tempo Real")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.subheader("Monitoramento em Tempo Real (ESP32)")
-        # Simulação de valores de sensores
-        temp = random.uniform(20.0, 35.0)
-        umid = random.uniform(40.0, 80.0)
-        solo = random.randint(300, 800) # Leitura analógica simulada
+    st.header("📡 Fase 3: Monitoramento IoT & Controle")
+    st.markdown("Interface de Gêmeo Digital: Simula a lógica do firmware ESP32 em tempo real.")
+
+    # Layout: Coluna da Esquerda (Simulador Físico) | Coluna da Direita (Painel de Monitoramento)
+    col_simulacao, col_painel = st.columns([1, 2])
+
+    with col_simulacao:
+        st.subheader("🎛️ Simulador de Hardware")
+        st.caption("Ajuste os valores como se fossem os sensores físicos:")
         
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Temperatura (DHT22)", f"{temp:.1f} °C")
-        m2.metric("Umidade Ar", f"{umid:.1f} %")
-        m3.metric("Umidade Solo (LDR/Cap)", f"{solo}")
+        # 1. Simula o DHT22 (Umidade)
+        # No C++: float umidade = dht.readHumidity();
+        input_umidade = st.slider("Umidade do Solo (%)", min_value=0.0, max_value=100.0, value=50.0, step=0.1)
         
-    with col2:
-        st.subheader("Atuadores")
-        st.write("Controle de Irrigação")
-        irrigacao = st.toggle("Ativar Bomba de Água")
-        if irrigacao:
-            st.warning("⚠️ BOMBA LIGADA - Enviando comando ao ESP32...")
+        # 2. Simula o sensor de pH (LDR)
+        # No C++: int ph = analogRead(SENSOR_PH); (0 a 4095 no ESP32)
+        input_ph_raw = st.slider("Leitura pH (LDR / Analógico)", 0, 4095, 2000)
+        
+        # 3. Simula os Botões de Nutrientes
+        # No C++: digitalRead(...) == LOW;
+        st.markdown("**Sensores de Nutrientes**")
+        tem_fosforo = st.checkbox("Fósforo Presente?", value=True)
+        tem_potassio = st.checkbox("Potássio Presente?", value=True)
+
+    with col_painel:
+        st.subheader("📊 Painel de Controle (Dashboard)")
+        
+        # --- LÓGICA DO FIRMWARE TRADUZIDA PARA PYTHON ---
+        # No C++: if (umidade < 40.0) { digitalWrite(LED_BOMBA, HIGH); }
+        estado_bomba = "DESLIGADA"
+        cor_bomba = "off" # cinza
+        
+        if input_umidade < 40.0:
+            estado_bomba = "LIGADA 💧"
+            cor_bomba = "normal" # verde no st.metric não tem cor direta, mas usamos delta
+            delta_bomba = "Ativa"
+            msg_bomba = "⚠️ Umidade Crítica! Bomba acionada automaticamente."
+            tipo_msg = st.warning
         else:
-            st.success("Bomba Desligada - Economia de energia.")
+            delta_bomba = "Inativa"
+            msg_bomba = "✅ Umidade adequada. Bomba em stand-by."
+            tipo_msg = st.success
+
+        # Exibição dos Cards (Metrics)
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Umidade Atual", f"{input_umidade:.1f}%", delta="- Seco" if input_umidade < 40 else "+ Úmido")
+        
+        # Conversão visual simples do LDR para escala 0-14 (apenas estimativa visual)
+        # Supondo que 0=Ácido(0) e 4095=Alcalino(14)
+        ph_estimado = (input_ph_raw / 4095) * 14
+        m2.metric("Nível pH (Est.)", f"{ph_estimado:.1f}", delta=f"Raw: {input_ph_raw}")
+        
+        m3.metric("Status Bomba", estado_bomba, delta=delta_bomba, delta_color="inverse" if input_umidade < 40 else "normal")
+
+        # Exibição do Alerta da Bomba
+        tipo_msg(msg_bomba)
+
+        st.divider()
+
+        # --- MONITOR DE NUTRIENTES ---
+        st.write("#### 🧪 Monitor de Nutrientes")
+        
+        c_fos, c_pot = st.columns(2)
+        
+        # Lógica C++: if (!fosforo) Serial.println("Alerta...");
+        with c_fos:
+            if tem_fosforo:
+                st.success("Fósforo (P): **OK**")
+            else:
+                st.error("Fósforo (P): **AUSENTE!**")
+                st.caption("Ação: Aplicar fertilizante rico em P.")
+
+        with c_pot:
+            if tem_potassio:
+                st.success("Potássio (K): **OK**")
+            else:
+                st.error("Potássio (K): **AUSENTE!**")
+                st.caption("Ação: Aplicar fertilizante rico em K.")
+
+    # Gráfico em tempo real (Simulação Visual)
+    st.divider()
+    st.caption("Simulação do Serial Plotter (Histórico Recente)")
+    
+    # Criando dados aleatórios próximos do valor selecionado para dar efeito de "leitura real"
+    dados_grafico = pd.DataFrame({
+        'Umidade': [input_umidade + np.random.uniform(-1, 1) for _ in range(20)],
+        'Linha de Corte': [40] * 20
+    })
+    st.line_chart(dados_grafico, color=["#3366cc", "#ff0000"])
 
 # --- FASE 4: MACHINE LEARNING ---
 elif fase_selecionada == "Fase 4: ML & Decisão":
