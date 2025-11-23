@@ -4,6 +4,8 @@ import numpy as np
 import math
 import time
 import random
+import sqlite3
+from datetime import datetime
 
 # Configuração da Página
 st.set_page_config(page_title="Sistema Integrado Agro 4.0", layout="wide", page_icon="🌱")
