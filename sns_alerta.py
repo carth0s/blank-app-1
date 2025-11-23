@@ -1,31 +1,27 @@
 import boto3
-import json
+import streamlit as st 
 
 def enviar_alerta_aws(mensagem):
     try:
-        # Tenta carregar as credenciais
-        with open("aws_credentials.json") as f:
-            cred = json.load(f)
-
-        # Conecta na AWS
+        # Acessa as chaves de forma segura através do st.secrets
+        # O Streamlit lê automaticamente o arquivo .streamlit/secrets.toml
+        
         sns = boto3.client(
             "sns",
-            aws_access_key_id=cred["AWS_ACCESS_KEY"],
-            aws_secret_access_key=cred["AWS_SECRET_KEY"],
+            aws_access_key_id=st.secrets["AWS_ACCESS_KEY"],
+            aws_secret_access_key=st.secrets["AWS_SECRET_KEY"],
             region_name="us-east-1"
         )
 
-        # Envia a mensagem
         response = sns.publish(
-            TopicArn=cred["SNS_ARN"],
+            TopicArn=st.secrets["SNS_ARN"],
             Message=mensagem,
             Subject="🚨 Alerta Crítico – FarmTech"
         )
         
-        # Retorna Sucesso e o ID da mensagem para mostrar no log
         return True, response['MessageId']
 
-    except FileNotFoundError:
-        return False, "Arquivo 'aws_credentials.json' não encontrado."
+    except KeyError as e:
+        return False, f"Chave não encontrada nos Secrets: {e}"
     except Exception as e:
         return False, str(e)
