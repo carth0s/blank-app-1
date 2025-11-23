@@ -45,29 +45,140 @@ if fase_selecionada == "Home":
     st.image("https://streamlit.io/images/brand/streamlit-mark-color.png", width=100)
     st.info("Selecione uma fase no menu lateral para interagir com os módulos específicos.")
 
+# ... (início do código anterior permanece igual)
+
 # --- FASE 1: DADOS E METEOROLOGIA ---
 elif fase_selecionada == "Fase 1: Dados & Meteo":
-    st.header("🌦️ Fase 1: Base Inicial e Meteorologia")
-    
-    st.subheader("1.1 Integração API Meteorológica (Simulação)")
-    # Simulação de chamada de API
-    if st.button("Atualizar Dados Meteorológicos"):
-        with st.spinner('Consultando API Externa...'):
-            time.sleep(1)
-            st.success("Dados recebidos com sucesso!")
+    st.header("🌦️ Fase 1: Gestão Inicial & Análise")
+    st.markdown("Integração dos scripts de Gestão Agrícola (Python) e Cálculo de Custos (Lógica R).")
+
+    # Criando abas para separar os dois códigos que você mandou
+    tab_gestao, tab_analise = st.tabs(["🌱 Gestão Agrícola (CRUD)", "📊 Análise Financeira (R)"])
+
+    # --- TAB 1: O CÓDIGO PYTHON ---
+    with tab_gestao:
+        st.subheader("Gestão Agrícola FarmTech 2025®")
+        
+        # Inicializando o banco de dados na memória do navegador 
+        if 'fazenda' not in st.session_state:
+            st.session_state.fazenda = pd.DataFrame(columns=['Cultura', 'Area_m2', 'Insumo', 'Aplicacao_L'])
+
+        # Formulário de Cadastro 
+        with st.expander("📝 Cadastrar Nova Cultura", expanded=True):
+            col1, col2 = st.columns(2)
+            with col1:
+                cultura_opt = st.selectbox("Selecione a Cultura:", ["Arroz", "Feijão"])
+                insumo_opt = st.selectbox("Insumo:", ["Fertilizante", "Pesticida"])
             
-            # Dados fictícios
-            clima_data = {
-                'Dia': ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'],
-                'Temp (°C)': [28, 27, 30, 32, 29],
-                'Umidade (%)': [60, 65, 55, 50, 62],
-                'Precipitação (mm)': [0, 2, 0, 0, 5]
-            }
-            df_clima = pd.DataFrame(clima_data)
-            st.dataframe(df_clima, use_container_width=True)
+            with col2:
+                tipo_geo = st.selectbox("Formato da Área:", ["Retângulo", "Círculo", "Trapézio"])
+                
+                # Inputs dinâmicos baseados na geometria
+                area_calc = 0.0
+                if tipo_geo == "Retângulo":
+                    l = st.number_input("Largura (m)", min_value=0.0)
+                    c = st.number_input("Comprimento (m)", min_value=0.0)
+                    area_calc = l * c
+                elif tipo_geo == "Círculo":
+                    r = st.number_input("Raio (m)", min_value=0.0)
+                    area_calc = math.pi * (r ** 2)
+                elif tipo_geo == "Trapézio":
+                    B = st.number_input("Base Maior (m)", min_value=0.0)
+                    b = st.number_input("Base Menor (m)", min_value=0.0)
+                    h = st.number_input("Altura (m)", min_value=0.0)
+                    area_calc = ((B + b) * h) / 2
             
-            st.subheader("1.2 Análise Estatística (R integration simulation)")
-            st.line_chart(df_clima.set_index('Dia')['Temp (°C)'])
+            st.info(f"Área Calculada: {area_calc:.2f} m²")
+
+            if st.button("Salvar Registro"):
+                if area_calc > 0:
+                    # Lógica de Aplicação
+                    taxa = 500 if insumo_opt == "Fertilizante" else 250
+                    total_aplicacao = area_calc * taxa
+                    
+                    # Adicionando ao DataFrame na sessão
+                    novo_dado = pd.DataFrame([{
+                        'Cultura': cultura_opt,
+                        'Area_m2': area_calc,
+                        'Insumo': insumo_opt,
+                        'Aplicacao_L': total_aplicacao / 1000  # Convertendo para Litros
+                    }])
+                    st.session_state.fazenda = pd.concat([st.session_state.fazenda, novo_dado], ignore_index=True)
+                    st.success(f"{cultura_opt} cadastrado com sucesso!")
+                    time.sleep(1) 
+                    st.rerun()
+                else:
+                    st.error("A área deve ser maior que zero.")
+
+        # Visualização e Exclusão 
+        st.divider()
+        st.subheader("📋 Culturas Cadastradas")
+        
+        if not st.session_state.fazenda.empty:
+            st.dataframe(st.session_state.fazenda, use_container_width=True)
+            
+            # Botão para limpar tudo 
+            if st.button("🗑️ Excluir Todos os Dados"):
+                st.session_state.fazenda = pd.DataFrame(columns=['Cultura', 'Area_m2', 'Insumo', 'Aplicacao_L'])
+                st.rerun()
+        else:
+            st.warning("Nenhuma cultura cadastrada.")
+
+    # --- TAB 2: O CÓDIGO R  ---
+    with tab_analise:
+        st.subheader("Cálculo de Gastos e Estatística (Lógica R)")
+        st.caption("Implementação da lógica estatística definida no script R da Fase 1.")
+        
+        col_r1, col_r2 = st.columns(2)
+        
+        with col_r1:
+            r_cultura = st.radio("Cultura (R):", ["Arroz", "Feijão"], horizontal=True)
+            r_insumo = st.radio("Insumo (R):", ["Fertilizante", "Pesticida"], horizontal=True)
+        
+        with col_r2:
+            r_litros_txt = st.text_area("Digite os valores de consumo de litros (separados por espaço):", "10 20 15 30 12")
+        
+        if st.button("Calcular Estatísticas"):
+            try:
+                # 1. Parsing dos Inputs 
+                litros = [float(x) for x in r_litros_txt.split()]
+                
+                # 2. Definição das constantes 
+                if r_cultura == "Arroz":
+                    fator = 2.607142857142857
+                    ciclo = 140
+                else:
+                    fator = 4.5625
+                    ciclo = 80
+                
+                if r_insumo == "Fertilizante":
+                    custo_litro = 47
+                else:
+                    custo_litro = 389
+                
+                # 3. Cálculos Vetoriais 
+                litros_anuais = np.array(litros) * fator
+                media = math.floor(np.mean(litros_anuais))
+                excedente = np.sum(litros_anuais - media)
+                gasto_total = np.sum(litros_anuais) * custo_litro
+                
+                # 4. Exibição dos Resultados 
+                st.divider()
+                st.markdown(f"### 📑 Resultados para {r_cultura}")
+                
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Ciclo de Plantio", f"{ciclo} dias")
+                m2.metric("Média Anual", f"{media} L")
+                m3.metric("Custo Total", f"R$ {gasto_total:,.2f}")
+                
+                st.info(f"**Desvio (Excedente):** {excedente:.2f} litros além da média.")
+                
+                # Gráfico extra 
+                st.bar_chart(litros_anuais)
+                st.caption("Distribuição dos Litros Anuais Calculados")
+
+            except ValueError:
+                st.error("Erro na entrada de dados! Certifique-se de usar apenas números separados por espaço.")
 
 # --- FASE 2: BANCO DE DADOS ---
 elif fase_selecionada == "Fase 2: Banco de Dados":
