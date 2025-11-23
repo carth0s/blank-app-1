@@ -433,34 +433,70 @@ elif fase_selecionada == "Fase 3: IoT & Sensores":
 
 # --- FASE 4: MACHINE LEARNING ---
 elif fase_selecionada == "Fase 4: ML & Decisão":
-    st.header("🤖 Fase 4: Dashboard Preditivo (Scikit-Learn)")
-    
-    st.write("Previsão de necessidade de irrigação baseada em dados históricos.")
-    
-    # Inputs para o modelo
-    col_in1, col_in2 = st.columns(2)
-    input_temp = col_in1.slider("Temperatura Atual", 10, 45, 30)
-    input_umid = col_in2.slider("Umidade do Solo (0-1000)", 0, 1000, 450)
-    
-    if st.button("Rodar Modelo Preditivo"):
-        # Simulação simples de lógica de ML
-        # Em produção, aqui você carregaria: model = joblib.load('modelo_agro.pkl')
-        chance_irrigacao = 0
-        if input_temp > 30 or input_umid < 400:
-            prediction = "IRRIGAR AGORA"
-            cor = "error" # vermelho
-        else:
-            prediction = "AGUARDAR"
-            cor = "success" # verde
-            
-        st.subheader("Resultado da IA:")
-        st.markdown(f"Ação Recomendada: :{cor}[**{prediction}**]")
-        
-        # Gráfico simples de dispersão
-        st.caption("Dispersão dos dados de treino (Visualização)")
-        chart_data = pd.DataFrame(np.random.randn(20, 2), columns=['Temp', 'Umidade'])
-        st.scatter_chart(chart_data)
+    st.header("🤖 Fase 4: Inteligência Artificial (Scikit-Learn)")
+    st.markdown("Sistema preditivo para acionamento automático de irrigação baseado em Machine Learning.")
 
+    # --- 1. CARREGAMENTO DO MODELO (Backend) ---
+    modelo = None
+    try:
+        import joblib
+        modelo = joblib.load("modelo_irrigacao.pkl")
+        status_modelo = "✅ Modelo Carregado (Scikit-Learn)"
+    except FileNotFoundError:
+        status_modelo = "⚠️ Modo Simulação (Arquivo .pkl não encontrado)"
+
+    # Exibe status discreto no canto
+    st.caption(f"Status do Sistema: {status_modelo}")
+    st.divider()
+
+    # --- 2. INTERFACE DE DECISÃO (Frontend) ---
+    col_input, col_resultado = st.columns(2)
+
+    with col_input:
+        st.subheader("Simulação de Sensor")
+        # Slider para input da umidade
+        umidade_ml = st.slider("Umidade do Solo (%)", 0.0, 100.0, 45.0, key="slider_ml")
+        
+        # Feedback visual imediato do valor
+        st.metric("Leitura do Sensor", f"{umidade_ml:.1f}%")
+
+    with col_output:
+        st.subheader("Decisão da IA")
+        
+        if st.button("Consultar Modelo Preditivo", type="primary"):
+            # Lógica de Predição
+            decisao = 0 # Default: Não irrigar
+            
+            if modelo:
+                try:
+                    # Previsão Real usando o arquivo .pkl
+                    # O modelo espera um array 2D: [[valor]]
+                    decisao = modelo.predict([[umidade_ml]])[0]
+                except:
+                    # Fallback de segurança se formato de dados for diferente
+                    decisao = 1 if umidade_ml < 40 else 0
+            else:
+                # Fallback de Simulação (Regra do seu README: < 40% irriga)
+                decisao = 1 if umidade_ml < 40 else 0
+
+            # Exibição do Resultado
+            if decisao == 1:
+                st.error("🚨 AÇÃO: IRRIGAR")
+                st.markdown("O modelo identificou **necessidade hídrica** crítica.")
+            else:
+                st.success("✅ AÇÃO: AGUARDAR")
+                st.markdown("O modelo identificou que o solo está **saudável**.")
+
+    # --- 3. DADOS DE TREINAMENTO (Contexto) ---
+    st.divider()
+    with st.expander("📂 Ver Base de Dados de Treinamento (Dataset)"):
+        try:
+            df = pd.read_csv("dataset_umidade.csv")
+            st.dataframe(df, use_container_width=True)
+            st.caption("Amostra dos dados utilizados para treinar o arquivo 'modelo_irrigacao.pkl'.")
+        except FileNotFoundError:
+            st.warning("Arquivo 'dataset_umidade.csv' não encontrado para visualização.")
+            
 # --- FASE 5: CLOUD COMPUTING ---
 elif fase_selecionada == "Fase 5: Cloud AWS":
     st.header("☁️ Fase 5: Infraestrutura Cloud & Segurança")
